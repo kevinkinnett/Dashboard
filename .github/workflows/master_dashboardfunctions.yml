@@ -46,8 +46,11 @@ jobs:
         run: ls -R $PUBLISH_DIR
 
       - name: Deploy to Azure Functions
-        uses: Azure/functions-action@v1
+        uses: Azure/functions-action@v1.5.2
         with:
           app-name: 'dashboardfunctions'
           package: ${{ env.PUBLISH_DIR }}
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_3BBE9BA6A05F46558DAE3A9456DF92B3 }}
+          scm-do-build-during-deployment: false
+          enable-oryx-build: false
+          respect-funcignore: true

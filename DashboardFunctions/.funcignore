@@ -1,0 +1,16 @@
+*.cs
+*.csproj
+local.settings.json
+.git*
+.vscode/
+test/
+*.Test.*
+*.Tests.*
+.vs/
+obj/
+bin/Debug/
+Properties/
+*.dll.config
+*.exe.config
+.env
+appsettings.*.json
