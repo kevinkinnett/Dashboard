@@ -1,8 +1,10 @@
-﻿using DashboardFunctions.Infrastructure;
+﻿using Azure.Storage.Blobs;
+using DashboardFunctions.Infrastructure;
 using DashboardFunctions.Services;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.Extensions.Options;
 using System.Net;
 using System.Text.Json;
 
@@ -11,7 +13,8 @@ namespace DashboardFunctions.Functions
     public sealed class GetYieldInversionFunction(
         ITimeSeriesFetchOrchestrator orchestrator,
         ITimeSeriesRepositoryFactory repoFactory,
-        IInversionService inversion)
+        IInversionService inversion,
+        IOptions<StorageCacheOptions> storageOptions) // added for delete endpoint
     {
         [Function("GetYieldInversion")]
         public async Task<HttpResponseData> Run(
@@ -56,7 +59,8 @@ namespace DashboardFunctions.Functions
                 seriesB,
                 start = start.ToString("yyyy-MM-dd"),
                 end = end.ToString("yyyy-MM-dd"),
-                points = spread.Select(p => new {
+                points = spread.Select(p => new
+                {
                     date = p.Date.ToString("yyyy-MM-dd"),
                     a = p.SeriesA,
                     b = p.SeriesB,
@@ -122,10 +126,10 @@ namespace DashboardFunctions.Functions
                         frequency = "Daily"; periodsPerYear = 365;
                         break;
                     default:
-                    {
-                        frequency = $"Every ~{Math.Round(first,0)} days"; periodsPerYear = (int)Math.Round(365.0/ first); if (periodsPerYear < 1) periodsPerYear = 1;
-                        break;
-                    }
+                        {
+                            frequency = $"Every ~{Math.Round(first, 0)} days"; periodsPerYear = (int)Math.Round(365.0 / first); if (periodsPerYear < 1) periodsPerYear = 1;
+                            break;
+                        }
                 }
             }
 
@@ -183,6 +187,64 @@ namespace DashboardFunctions.Functions
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 WriteIndented = true
             }), ct);
+            return ok;
+        }
+
+        private static string Sanitize(string seriesId)
+        {
+            if (string.IsNullOrWhiteSpace(seriesId)) return "unknown";
+            var chars = seriesId.Select(ch => char.IsLetterOrDigit(ch) || ch == '-' || ch == '_' ? ch : '_').ToArray();
+            return new string(chars);
+        }
+
+        // DELETE endpoint to clear selected cache blobs (coverage + specific observation blobs)
+        [Function("DeleteCacheBlobs")]
+        public async Task<HttpResponseData> DeleteCacheBlobs(
+            [HttpTrigger(AuthorizationLevel.Function, "delete", Route = "yield")] HttpRequestData req,
+            FunctionContext ctx)
+        {
+            var opts = storageOptions.Value ?? throw new InvalidOperationException("Storage options not configured");
+            if (string.IsNullOrWhiteSpace(opts.ConnectionString))
+            {
+                var bad = req.CreateResponse(HttpStatusCode.InternalServerError);
+                await bad.WriteStringAsync("Storage connection string missing.");
+                return bad;
+            }
+
+            var container = new BlobContainerClient(opts.ConnectionString, opts.ContainerName);
+            await container.CreateIfNotExistsAsync(cancellationToken: ctx.CancellationToken);
+
+            var series = new[] { "DGS2", "DGS10", "GDPC1" };
+            var results = new List<object>();
+
+            var coverageBlob = container.GetBlobClient(opts.CoverageBlobName);
+            var coverageDeleted = await coverageBlob.DeleteIfExistsAsync(cancellationToken: ctx.CancellationToken);
+            results.Add(new { blob = opts.CoverageBlobName, deleted = coverageDeleted.Value });
+
+            foreach (var s in series)
+            {
+                var blobName = $"obs-{Sanitize(s)}.csv";
+                var blob = container.GetBlobClient(blobName);
+                var deleted = await blob.DeleteIfExistsAsync(cancellationToken: ctx.CancellationToken);
+                results.Add(new { blob = blobName, deleted = deleted.Value });
+            }
+
+            var ok = req.CreateResponse(HttpStatusCode.OK);
+            ok.Headers.Add("Content-Type", "application/json");
+
+            var payload = new
+            {
+                message = "Selected cache blobs deleted (if they existed).",
+                container = opts.ContainerName,
+                blobs = results,
+                note = "Subsequent data requests will regenerate cache as needed via orchestrator."
+            };
+
+            await ok.WriteStringAsync(JsonSerializer.Serialize(payload, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = true
+            }), ctx.CancellationToken);
             return ok;
         }
     }

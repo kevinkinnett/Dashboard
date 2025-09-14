@@ -51,3 +51,15 @@ export async function fetchGdpGrowth(
   }
   return (await res.json()) as GdpGrowthResponseDto;
 }
+
+// DELETE selected cache blobs (coverage + specified observation blobs)
+export async function purgeCache(): Promise<{ message: string } & Record<string, any>> {
+  const base = resolveApiBase();
+  const url = appendCode(`${base}/api/yield`);
+  const res = await fetch(url, { method: 'DELETE' });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`HTTP ${res.status}: ${text}`);
+  }
+  return await res.json();
+}

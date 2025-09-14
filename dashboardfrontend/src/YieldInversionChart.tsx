@@ -24,6 +24,7 @@ interface Props {
     seriesA?: string;
     seriesB?: string;
     useSecondaryAxisForSpread?: boolean;
+    reloadToken?: number; // triggers refetch when incremented
 }
 
 const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(function YieldInversionChart(
@@ -33,6 +34,7 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
         seriesA = 'DGS10',
         seriesB = 'DGS2',
         useSecondaryAxisForSpread = false,
+        reloadToken = 0,
     },
     ref
 ) {
@@ -76,7 +78,7 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
             .then(r => { if (!cancelled) setResp(r); })
             .catch(e => { if (!cancelled) setError(String(e)); });
         return () => { cancelled = true; };
-    }, [start, end, seriesA, seriesB]);
+    }, [start, end, seriesA, seriesB, reloadToken]); // include reloadToken
 
     // Fetch GDP growth (separate endpoint you’ve already built)
     useEffect(() => {
@@ -86,7 +88,7 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
             .then(r => { if (!cancelled) setGdp(r); })
             .catch(() => { if (!cancelled) setGdp(null); });
         return () => { cancelled = true; };
-    }, [start, end]);
+    }, [start, end, reloadToken]); // include reloadToken
 
     // Try to capture initial chart state if API is present.
     useEffect(() => {

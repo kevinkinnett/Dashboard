@@ -7,6 +7,7 @@ import React, {
     useState,
 } from 'react';
 import YieldInversionChart, { type YieldInversionChartHandle } from './YieldInversionChart';
+import { purgeCache } from './api';
 
 const STORAGE_KEY = 'yieldInversionSettings:v1';
 const NAV_KEY = 'yieldInversionSettings:navCollapsed:v1';
@@ -53,6 +54,11 @@ export default function App() {
     const [seriesA, setA] = useState(init.seriesA);
     const [seriesB, setB] = useState(init.seriesB);
     const [secondaryAxis, setSecondaryAxis] = useState(init.secondaryAxis);
+
+    // Chart reload token (increments after cache purge)
+    const [reloadToken, setReloadToken] = useState(0);
+    const [purging, setPurging] = useState(false);
+    const [purgeError, setPurgeError] = useState<string | null>(null);
 
     // Collapsible nav state (persisted)
     const [navCollapsed, setNavCollapsed] = useState<boolean>(() => {
@@ -147,6 +153,20 @@ export default function App() {
         chartApiRef.current?.resetZoom();
     };
 
+    const handlePurge = async () => {
+        setPurging(true);
+        setPurgeError(null);
+        try {
+            await purgeCache();
+            setReloadToken(t => t + 1);
+            setTimeout(() => chartApiRef.current?.resetZoom(), 50);
+        } catch (e: any) {
+            setPurgeError(e.message || 'Failed');
+        } finally {
+            setPurging(false);
+        }
+    };
+
     const asideWidth = navCollapsed ? 54 : 230;
 
     return (
@@ -230,6 +250,7 @@ export default function App() {
                         padding: '.65rem 1rem',
                         background: 'rgba(18,25,33,.85)',
                         borderBottom: '1px solid #243241',
+                        alignItems: 'flex-end'
                     }}
                 >
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -330,7 +351,20 @@ export default function App() {
                         >
                             Reset Range
                         </button>
+                        <button
+                            onClick={handlePurge}
+                            disabled={purging}
+                            style={{ fontSize: '.6rem', padding: '.45rem .8rem', background: purging ? '#334054' : '#3d5a74', color: '#fff', border: '1px solid #4a6a86', borderRadius: 6, cursor: 'pointer' }}
+                            title="Delete cached blobs and refetch data"
+                        >
+                            {purging ? 'Purging…' : 'Purge Cache'}
+                        </button>
                     </div>
+                    {purgeError && (
+                        <div style={{ width: '100%', fontSize: '.55rem', color: '#f87171' }}>
+                            {purgeError}
+                        </div>
+                    )}
                 </div>
 
                 <div
@@ -381,6 +415,7 @@ export default function App() {
                                 seriesA={seriesA}
                                 seriesB={seriesB}
                                 useSecondaryAxisForSpread={secondaryAxis}
+                                reloadToken={reloadToken}
                             />
                         </div>
                     </div>
