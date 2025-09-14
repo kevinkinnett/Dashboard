@@ -42,6 +42,23 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
     // GDP (quarterly growth) overlay
     const [gdp, setGdp] = useState<GdpGrowthResponseDto | null>(null);
 
+    // Track whether we consider the current device/layout as mobile (coarse pointer or narrow width)
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const mqCoarse = window.matchMedia('(pointer: coarse)');
+        const mqNarrow = window.matchMedia('(max-width: 820px)');
+        const update = () => setIsMobile(mqCoarse.matches || mqNarrow.matches);
+        update();
+        mqCoarse.addEventListener('change', update);
+        mqNarrow.addEventListener('change', update);
+        window.addEventListener('orientationchange', update);
+        return () => {
+            mqCoarse.removeEventListener('change', update);
+            mqNarrow.removeEventListener('change', update);
+            window.removeEventListener('orientationchange', update);
+        };
+    }, []);
+
     // ag-charts-react exposes the chart instance via `ref.current.chart`
     const agRef = useRef<{ chart?: AgChartInstance } | null>(null);
 
@@ -158,6 +175,14 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
             },
         ];
 
+        // Mobile tweaks: simpler x-axis labels (shorter format) & fewer features
+        if (isMobile) {
+            axes[0] = {
+                ...axes[0],
+                label: { format: '%y', minSpacing: 16 },
+            } as any;
+        }
+
         // Need a right axis if either user wants spread on right OR we have GDP
         const needRightAxis = useSecondaryAxisForSpread || gdpLine.length > 0;
         if (needRightAxis) {
@@ -201,11 +226,9 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
                 yKey: 'gdp',
                 yName: 'GDP (q/q SAAR %)', // tweak if you prefer plain q/q %
                 yAxisKey: 'right',
-                marker: { enabled: true, size: 3 },
+                marker: { enabled: true, size: isMobile ? 2.5 : 3 },
                 stroke: '#f59e0b',
                 strokeWidth: 2,
-                // If your version supports it, you can try:
-                // interpolation: { type: 'step' },
                 tooltip: {
                     renderer: ({ datum }: any) => {
                         const d: Date = datum.date;
@@ -225,17 +248,17 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
             subtitle: { enabled: false },
             data,
             axes,
-            legend: { enabled: true, position: 'bottom' },
-            padding: { top: 6, right: 8, bottom: 4, left: 8 },
+            legend: { enabled: true, position: isMobile ? 'top' : 'bottom', item: { marker: { size: isMobile ? 8 : 12 } } },
+            padding: isMobile ? { top: 4, right: 4, bottom: 2, left: 4 } : { top: 6, right: 8, bottom: 4, left: 8 },
 
             // AG Charts zoom API (Enterprise)
             zoom: {
                 enabled: true,
                 axes: 'x',             // zoom on X only
-                enableSelecting: true, // drag-to-zoom box
-                enableScrolling: true, // wheel/trackpad zoom
+                enableSelecting: !isMobile, // disable drag-box selection on mobile (hard to use)
+                enableScrolling: true, // wheel/trackpad OR pinch zoom
                 enablePanning: true,   // drag to pan when zoomed
-                enableAxisDragging: true,
+                enableAxisDragging: !isMobile, // axis handles are fiddly on touch
             } as any,
 
             navigator: { enabled: false } as any,
@@ -259,6 +282,7 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
         useSecondaryAxisForSpread,
         gdpLine,
         resetNonce,
+        isMobile,
     ]);
 
     if (error) return <div style={{ color: '#f87171', padding: 8 }}>{error}</div>;
