@@ -9,6 +9,7 @@ import React, {
 import YieldInversionChart, { type YieldInversionChartHandle } from './YieldInversionChart';
 
 const STORAGE_KEY = 'yieldInversionSettings:v1';
+const NAV_KEY = 'yieldInversionSettings:navCollapsed:v1';
 
 function loadInitial() {
     const fallback = {
@@ -52,6 +53,14 @@ export default function App() {
     const [seriesA, setA] = useState(init.seriesA);
     const [seriesB, setB] = useState(init.seriesB);
     const [secondaryAxis, setSecondaryAxis] = useState(init.secondaryAxis);
+
+    // Collapsible nav state (persisted)
+    const [navCollapsed, setNavCollapsed] = useState<boolean>(() => {
+        try { return localStorage.getItem(NAV_KEY) === '1'; } catch { return false; }
+    });
+    useEffect(() => {
+        try { localStorage.setItem(NAV_KEY, navCollapsed ? '1' : '0'); } catch {}
+    }, [navCollapsed]);
 
     const chartApiRef = useRef<YieldInversionChartHandle>(null);
 
@@ -138,6 +147,8 @@ export default function App() {
         chartApiRef.current?.resetZoom();
     };
 
+    const asideWidth = navCollapsed ? 54 : 230;
+
     return (
         <div
             style={{
@@ -150,22 +161,56 @@ export default function App() {
         >
             <aside
                 style={{
-                    width: 230,
+                    width: asideWidth,
                     background: '#121a23',
                     color: '#d2dde7',
-                    padding: '1rem .85rem',
+                    padding: navCollapsed ? '.65rem .4rem' : '1rem .85rem',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '1rem',
+                    gap: navCollapsed ? '.5rem' : '1rem',
                     borderRight: '1px solid #243241',
                     flexShrink: 0,
+                    transition: 'width .25s ease',
+                    overflow: 'hidden',
                 }}
             >
-                <h1 style={{ fontSize: '1rem', margin: 0 }}>DashOps</h1>
-                <div style={{ fontSize: '.7rem', opacity: 0.7 }}>Yield Inversion</div>
-                <div style={{ marginTop: 'auto', fontSize: '.55rem', opacity: 0.55 }}>
-                    v0.2 • enterprise zoom
+                <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
+                    <h1 style={{ fontSize: '1rem', margin: 0, whiteSpace: 'nowrap' }}>
+                        {navCollapsed ? 'D' : 'DashOps'}
+                    </h1>
                 </div>
+                {!navCollapsed && (
+                    <div style={{ fontSize: '.7rem', opacity: 0.7 }}>Yield Inversion</div>
+                )}
+                <button
+                    onClick={() => setNavCollapsed(c => !c)}
+                    title={navCollapsed ? 'Expand' : 'Collapse'}
+                    aria-label={navCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+                    style={{
+                        marginTop: 'auto',
+                        fontSize: '.55rem',
+                        padding: '.35rem .45rem',
+                        background: '#1e2a35',
+                        border: '1px solid #2d3c4b',
+                        color: '#c8d3dc',
+                        cursor: 'pointer',
+                        borderRadius: 6,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '.25rem',
+                    }}
+                >
+                    <span style={{ fontSize: '.7rem', lineHeight: 1 }}>
+                        {navCollapsed ? '»' : '«'}
+                    </span>
+                    {!navCollapsed && <span>Collapse</span>}
+                </button>
+                {!navCollapsed && (
+                    <div style={{ fontSize: '.55rem', opacity: 0.55, marginTop: '.25rem' }}>
+                        v0.2 • enterprise zoom
+                    </div>
+                )}
             </aside>
 
             <div
