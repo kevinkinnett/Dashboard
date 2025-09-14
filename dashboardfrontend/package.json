@@ -9,6 +9,9 @@
     "lint": "eslint .",
     "preview": "vite preview"
   },
+  "engines": {
+    "node": "^20.19.0"
+  },
   "dependencies": {
     "ag-charts-community": "^12.2.0",
     "ag-charts-enterprise": "^12.2.0",

@@ -1,5 +1,5 @@
 ﻿// src/YieldInversionChart.tsx
-import React, {
+import {
     forwardRef,
     useEffect,
     useImperativeHandle,
