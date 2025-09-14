@@ -1,14 +1,25 @@
 import type { YieldResponseDto, GdpGrowthResponseDto } from './types';
 
-// Helper to resolve the API base.
-// In Azure Static Web Apps, the frontend and Functions share the same origin and
-// functions are automatically exposed under the /api route. Therefore we can
-// default to '' (same-origin) and only require VITE_API_BASE for local dev overrides
-// (e.g. VITE_API_BASE=http://localhost:7071).
+interface EnvShape { VITE_API_BASE?: string; VITE_API_KEY?: string; }
+function getEnv(): EnvShape {
+  // Populated in main.tsx
+  if (typeof globalThis !== 'undefined' && (globalThis as any).__ENV) {
+    return (globalThis as any).__ENV as EnvShape;
+  }
+  return {};
+}
+
 function resolveApiBase(): string {
-  const raw = (import.meta as any).env?.VITE_API_BASE as string | undefined;
+  const raw = getEnv().VITE_API_BASE;
   if (!raw || !raw.trim()) return '';
   return raw.replace(/\/$/, '');
+}
+
+function appendCode(url: string): string {
+  const key = getEnv().VITE_API_KEY;
+  if (!key) return url;
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}code=${encodeURIComponent(key)}`;
 }
 
 export async function fetchInversion(
@@ -18,7 +29,7 @@ export async function fetchInversion(
   seriesB = 'DGS2'
 ): Promise<YieldResponseDto> {
   const base = resolveApiBase();
-  const url = `${base}/api/yield-inversion?start=${start}&end=${end}&seriesA=${seriesA}&seriesB=${seriesB}`;
+  const url = appendCode(`${base}/api/yield-inversion?start=${start}&end=${end}&seriesA=${seriesA}&seriesB=${seriesB}`);
   const res = await fetch(url);
   if (!res.ok) {
     const text = await res.text();
@@ -32,7 +43,7 @@ export async function fetchGdpGrowth(
   end: string
 ): Promise<GdpGrowthResponseDto> {
   const base = resolveApiBase();
-  const url = `${base}/api/gdp-growth?start=${start}&end=${end}`;
+  const url = appendCode(`${base}/api/gdp-growth?start=${start}&end=${end}`);
   const res = await fetch(url);
   if (!res.ok) {
     const text = await res.text();
