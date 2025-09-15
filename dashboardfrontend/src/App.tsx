@@ -223,13 +223,13 @@ export default function App() {
                     }}
                 >
                     <span style={{ fontSize: '.7rem', lineHeight: 1 }}>
-                        {navCollapsed ? '»' : '«'}
+                        {navCollapsed ? '' : ''}
                     </span>
                     {!navCollapsed && <span>Collapse</span>}
                 </button>
                 {!navCollapsed && (
                     <div style={{ fontSize: '.55rem', opacity: 0.55, marginTop: '.25rem' }}>
-                        v0.2 • enterprise zoom
+                        v0.2  enterprise zoom
                     </div>
                 )}
             </aside>
@@ -358,7 +358,7 @@ export default function App() {
                             style={{ fontSize: '.6rem', padding: '.45rem .8rem', background: purging ? '#334054' : '#3d5a74', color: '#fff', border: '1px solid #4a6a86', borderRadius: 6, cursor: 'pointer' }}
                             title="Delete cached blobs and refetch data"
                         >
-                            {purging ? 'Purging…' : 'Purge Cache'}
+                            {purging ? 'Purging' : 'Purge Cache'}
                         </button>
                     </div>
                     {purgeError && (
@@ -374,13 +374,14 @@ export default function App() {
                         minHeight: 0,
                         padding: '.75rem',
                         display: 'flex',
-                        overflow: 'hidden',
+                        flexDirection: 'column',
+                        overflowY: 'auto',
                     }}
                 >
                     <div
                         style={{
-                            flex: 1,
-                            minHeight: 0,
+                            flex: '0 0 auto',
+                            height: '60vh',
                             minWidth: 0,
                             background: 'linear-gradient(145deg,#1d2731,#10161c)',
                             border: '1px solid #243241',
@@ -419,8 +420,8 @@ export default function App() {
                                 reloadToken={reloadToken}
                             />
                         </div>
-                        <MetricDescriptions />
                     </div>
+                    <MetricDescriptions />
                 </div>
             </div>
         </div>
