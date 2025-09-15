@@ -359,6 +359,7 @@ export default function App() {
                             title="Delete cached blobs and refetch data"
                         >
                             {purging ? 'Purging…' : 'Purge Cache'}
+                       </button>
                     </div>
                     {purgeError && (
                         <div style={{ width: '100%', fontSize: '.55rem', color: '#f87171' }}>
