@@ -16,10 +16,10 @@ export type YieldResponseDto = {
 export type GdpGrowthPointDto = {
     date: string;                  // quarter start (e.g., 2025-04-01)
     value: number | null;          // GDPC1 level
-    prev: number | null;
-    change: number | null;
-    changePct: number | null;      // q/q % (not fraction)
-    annualizedChangePct: number | null; // q/q SAAR %
+    prev: number | null;           // comparison value (prior quarter for qoq, same quarter prior year for yoy)
+    change: number | null;         // absolute change vs prev
+    changePct: number | null;      // percent change vs prev (q/q or y/y)
+    annualizedChangePct: number | null; // only populated for qoq mode (SAAR); null for yoy
 };
 
 export type GdpGrowthResponseDto = {
@@ -28,5 +28,6 @@ export type GdpGrowthResponseDto = {
     end: string;
     frequency: 'Quarterly';
     periodsPerYear: number;        // e.g., 4
+    mode: 'qoq' | 'yoy';           // calculation mode returned by API
     points: GdpGrowthPointDto[];
 };

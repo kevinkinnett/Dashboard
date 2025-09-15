@@ -77,7 +77,7 @@ namespace DashboardFunctions.Functions
             return ok;
         }
 
-        // GDP growth endpoint. Computes absolute, percentage, and annualized percentage change between consecutive points.
+        // GDP growth endpoint. Adds mode switch for Quarter-over-Quarter (qoq) vs Year-over-Year (yoy) calculations.
         [Function("GetGdpGrowth")]
         public async Task<HttpResponseData> GetGdpGrowth(
             [HttpTrigger(AuthorizationLevel.Function, "get", Route = "gdp-growth")] HttpRequestData req,
@@ -87,6 +87,8 @@ namespace DashboardFunctions.Functions
             var startStr = q.TryGetValue("start", out var sv) ? sv.ToString() : null;
             var endStr = q.TryGetValue("end", out var ev) ? ev.ToString() : null;
             var series = q.TryGetValue("series", out var s) ? s.ToString() : "GDPC1"; // Real GDP
+            var mode = q.TryGetValue("mode", out var m) ? m.ToString().ToLowerInvariant() : "qoq"; // qoq | yoy
+            if (mode != "qoq" && mode != "yoy") mode = "qoq";
 
             if (!DateTime.TryParse(startStr, out var start) ||
                 !DateTime.TryParse(endStr, out var end) || start > end)
@@ -103,72 +105,74 @@ namespace DashboardFunctions.Functions
             var rows = await repo.GetSeriesAsync(series, start, end, ct);
             var ordered = rows.OrderBy(r => r.Date).ToList();
 
-            // Detect frequency based on median/first interval in days.
-            var frequency = "Unknown";
-            var periodsPerYear = 1;
-            if (ordered.Count > 1)
+            // Always quarterly per requirement.
+            const string frequency = "Quarterly";
+            const int periodsPerYear = 4;
+
+            var growthPoints = new List<object>(ordered.Count);
+
+            for (var i = 0; i < ordered.Count; i++)
             {
-                var diffs = ordered.Skip(1).Select((r, i) => (r.Date - ordered[i].Date).TotalDays).ToList();
-                var first = diffs.First();
-                switch (first)
+                var r = ordered[i];
+                decimal? prevVal = null; // value used as comparison base
+                decimal? absChange = null;
+                decimal? pctChange = null; // period or YoY change %
+                decimal? annualizedPct = null; // only meaningful for qoq
+
+                if (r.Value.HasValue)
                 {
-                    // Simple heuristic buckets
-                    case >= 80 and <= 100:
-                        frequency = "Quarterly"; periodsPerYear = 4;
-                        break;
-                    case >= 26 and <= 35:
-                        frequency = "Monthly"; periodsPerYear = 12;
-                        break;
-                    case >= 6 and <= 8:
-                        frequency = "Weekly"; periodsPerYear = 52;
-                        break;
-                    case >= 1 and <= 2:
-                        frequency = "Daily"; periodsPerYear = 365;
-                        break;
-                    default:
+                    switch (mode)
+                    {
+                        case "qoq" when i > 0:
                         {
-                            frequency = $"Every ~{Math.Round(first, 0)} days"; periodsPerYear = (int)Math.Round(365.0 / first); if (periodsPerYear < 1) periodsPerYear = 1;
+                            var prev = ordered[i - 1];
+                            if (prev.Value.HasValue)
+                            {
+                                prevVal = prev.Value.Value;
+                                absChange = r.Value.Value - prevVal.Value;
+                                if (prevVal.Value != 0m)
+                                {
+                                    pctChange = (absChange / prevVal.Value) * 100m;
+                                    // annualize QoQ change ( (new/old)^4 - 1 )
+                                    if (prevVal.Value > 0 && r.Value.Value > 0)
+                                    {
+                                        var ratio = r.Value.Value / prevVal.Value;
+                                        annualizedPct = (decimal)(Math.Pow((double)ratio, periodsPerYear) - 1d) * 100m;
+                                    }
+                                }
+                            }
+
                             break;
                         }
-                }
-            }
-
-            decimal? prev = null;
-            var growthPoints = new List<object>(ordered.Count);
-            foreach (var r in ordered)
-            {
-                decimal? absChange = null;
-                decimal? pctChange = null; // period change %
-                decimal? annualizedPct = null; // annualized change %
-                if (r.Value.HasValue && prev.HasValue)
-                {
-                    absChange = r.Value.Value - prev.Value;
-                    if (prev.Value != 0m)
-                    {
-                        pctChange = (absChange / prev.Value) * 100m; // already percent
-                        // Annualize only if periodsPerYear > 1 and value positive (avoid complex cases with negatives or zeros)
-                        if (periodsPerYear > 1 && prev.Value > 0 && r.Value.Value > 0)
+                        case "yoy" when i >= periodsPerYear:
                         {
-                            var ratio = r.Value.Value / prev.Value; // growth factor for the period
-                            // Use double for exponent then convert back
-                            var annFactor = Math.Pow((double)ratio, periodsPerYear) - 1d;
-                            annualizedPct = (decimal)annFactor * 100m;
+                            var prev = ordered[i - periodsPerYear];
+                            if (prev.Value.HasValue)
+                            {
+                                prevVal = prev.Value.Value;
+                                absChange = r.Value.Value - prevVal.Value;
+                                if (prevVal.Value != 0m)
+                                {
+                                    // YoY change already annual by definition
+                                    pctChange = (absChange / prevVal.Value) * 100m;
+                                    annualizedPct = null; // not applicable / redundant
+                                }
+                            }
+
+                            break;
                         }
                     }
                 }
-                // Round to 4 decimals for pct values for readability
-                decimal? RoundPct(decimal? v) => v.HasValue ? Math.Round(v.Value, 4, MidpointRounding.AwayFromZero) : null;
 
                 growthPoints.Add(new
                 {
                     date = r.Date.ToString("yyyy-MM-dd"),
                     value = r.Value,
-                    prev = prev,
+                    prev = prevVal, // the comparison value (previous quarter or same quarter prior year)
                     change = absChange,
                     changePct = RoundPct(pctChange),
                     annualizedChangePct = RoundPct(annualizedPct)
                 });
-                prev = r.Value;
             }
 
             var ok = req.CreateResponse(HttpStatusCode.OK);
@@ -180,6 +184,7 @@ namespace DashboardFunctions.Functions
                 end = end.ToString("yyyy-MM-dd"),
                 frequency,
                 periodsPerYear,
+                mode,
                 points = growthPoints
             };
             await ok.WriteStringAsync(JsonSerializer.Serialize(payload, new JsonSerializerOptions
@@ -188,6 +193,9 @@ namespace DashboardFunctions.Functions
                 WriteIndented = true
             }), ct);
             return ok;
+
+            // Helper local for rounding
+            decimal? RoundPct(decimal? v) => v.HasValue ? Math.Round(v.Value, 4, MidpointRounding.AwayFromZero) : null;
         }
 
         private static string Sanitize(string seriesId)

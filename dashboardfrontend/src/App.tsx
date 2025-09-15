@@ -20,16 +20,17 @@ function loadInitial() {
         seriesA: 'DGS10',
         seriesB: 'DGS2',
         secondaryAxis: false,
+        gdpMode: 'qoq' as 'qoq' | 'yoy',
     };
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return fallback;
         const parsed = JSON.parse(raw);
         if (!parsed || typeof parsed !== 'object') return fallback;
-        const { start, end, seriesA, seriesB, secondaryAxis } = parsed as any;
+        const { start, end, seriesA, seriesB, secondaryAxis, gdpMode } = parsed as any;
         const iso = /^(\d{4})-(\d{2})-(\d{2})$/;
         if (!iso.test(start) || !iso.test(end)) {
-            return { ...fallback, seriesA, seriesB, secondaryAxis };
+            return { ...fallback, seriesA, seriesB, secondaryAxis, gdpMode: gdpMode === 'yoy' ? 'yoy' : 'qoq' };
         }
         return {
             start,
@@ -37,6 +38,7 @@ function loadInitial() {
             seriesA: seriesA || fallback.seriesA,
             seriesB: seriesB || fallback.seriesB,
             secondaryAxis: !!secondaryAxis,
+            gdpMode: gdpMode === 'yoy' ? 'yoy' : 'qoq',
         };
     } catch {
         return fallback;
@@ -55,6 +57,7 @@ export default function App() {
     const [seriesA, setA] = useState(init.seriesA);
     const [seriesB, setB] = useState(init.seriesB);
     const [secondaryAxis, setSecondaryAxis] = useState(init.secondaryAxis);
+    const [gdpMode, setGdpMode] = useState<'qoq' | 'yoy'>(init.gdpMode);
 
     // Chart reload token (increments after cache purge)
     const [reloadToken, setReloadToken] = useState(0);
@@ -75,10 +78,10 @@ export default function App() {
         try {
             localStorage.setItem(
                 STORAGE_KEY,
-                JSON.stringify({ start, end, seriesA, seriesB, secondaryAxis })
+                JSON.stringify({ start, end, seriesA, seriesB, secondaryAxis, gdpMode })
             );
         } catch { }
-    }, [start, end, seriesA, seriesB, secondaryAxis]);
+    }, [start, end, seriesA, seriesB, secondaryAxis, gdpMode]);
 
     const isValidDate = useCallback(
         (v: string) =>
@@ -339,6 +342,14 @@ export default function App() {
                         Spread Right Axis
                     </label>
 
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <label style={{ fontSize: '.6rem', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.7 }}>GDP Mode</label>
+                        <select value={gdpMode} onChange={e => setGdpMode(e.target.value === 'yoy' ? 'yoy' : 'qoq')} style={{ fontSize: '.65rem' }}>
+                            <option value="qoq">QoQ (SAAR line)</option>
+                            <option value="yoy">YoY %</option>
+                        </select>
+                    </div>
+
                     <div style={{ marginLeft: 'auto', display: 'flex', gap: '.5rem' }}>
                         <button
                             onClick={resetZoom}
@@ -417,6 +428,7 @@ export default function App() {
                                 seriesB={seriesB}
                                 useSecondaryAxisForSpread={secondaryAxis}
                                 reloadToken={reloadToken}
+                                gdpMode={gdpMode}
                             />
                         </div>
                         <MetricDescriptions />

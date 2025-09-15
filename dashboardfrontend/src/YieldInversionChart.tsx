@@ -1,5 +1,5 @@
 ﻿// src/YieldInversionChart.tsx
-import {
+import React, {
     forwardRef,
     useEffect,
     useImperativeHandle,
@@ -25,6 +25,7 @@ interface Props {
     seriesB?: string;
     useSecondaryAxisForSpread?: boolean;
     reloadToken?: number; // triggers refetch when incremented
+    gdpMode?: 'qoq' | 'yoy';
 }
 
 const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(function YieldInversionChart(
@@ -35,16 +36,17 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
         seriesB = 'DGS2',
         useSecondaryAxisForSpread = false,
         reloadToken = 0,
+        gdpMode = 'qoq'
     },
     ref
 ) {
     const [resp, setResp] = useState<YieldResponseDto | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    // GDP (quarterly growth) overlay
+    // GDP overlay
     const [gdp, setGdp] = useState<GdpGrowthResponseDto | null>(null);
 
-    // Track whether we consider the current device/layout as mobile (coarse pointer or narrow width)
+    // Track whether we consider the current device/layout as mobile
     const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
         const mqCoarse = window.matchMedia('(pointer: coarse)');
@@ -61,15 +63,11 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
         };
     }, []);
 
-    // ag-charts-react exposes the chart instance via `ref.current.chart`
     const agRef = useRef<{ chart?: AgChartInstance } | null>(null);
-
-    // keep an optional saved state if the API exists
     const initialStateRef = useRef<any | null>(null);
-
-    // nonce to force applying initialState-based zoom resets if setState() is unavailable
     const [resetNonce, setResetNonce] = useState(0);
 
+    // Fetch inversion
     useEffect(() => {
         let cancelled = false;
         setError(null);
@@ -78,23 +76,23 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
             .then(r => { if (!cancelled) setResp(r); })
             .catch(e => { if (!cancelled) setError(String(e)); });
         return () => { cancelled = true; };
-    }, [start, end, seriesA, seriesB, reloadToken]); // include reloadToken
+    }, [start, end, seriesA, seriesB, reloadToken]);
 
-    // Fetch GDP growth (separate endpoint you’ve already built)
+    // Fetch GDP growth with mode
     useEffect(() => {
         let cancelled = false;
         setGdp(null);
-        fetchGdpGrowth(start, end)
+        fetchGdpGrowth(start, end, gdpMode)
             .then(r => { if (!cancelled) setGdp(r); })
             .catch(() => { if (!cancelled) setGdp(null); });
         return () => { cancelled = true; };
-    }, [start, end, reloadToken]); // include reloadToken
+    }, [start, end, gdpMode, reloadToken]);
 
-    // Try to capture initial chart state if API is present.
+    // Capture initial chart state
     useEffect(() => {
         const inst = agRef.current?.chart as any;
         if (inst && typeof inst.getState === 'function') {
-            try { initialStateRef.current = inst.getState(); } catch { /* ignore */ }
+            try { initialStateRef.current = inst.getState(); } catch { }
         }
     }, []);
 
@@ -103,11 +101,11 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
             const inst = agRef.current?.chart as any;
             // Prefer API reset via setState if available (v9/10+)
             if (inst && typeof inst.setState === 'function') {
-                const zoomState = initialStateRef.current?.zoom; // may be undefined, that's fine
+                const zoomState = initialStateRef.current?.zoom;
                 try {
-                    inst.setState(zoomState ? { zoom: zoomState } : {}); // {} clears zoom/legend
+                    inst.setState(zoomState ? { zoom: zoomState } : {});
                     return;
-                } catch { /* fall through */ }
+                } catch { }
             }
             // Fallback: mutate `initialState` (runtime-applied) to full extent
             setResetNonce(n => n + 1);
@@ -128,7 +126,7 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
         },
     }), []);
 
-    // Include split spread fields for colouring without deprecated itemStyler API.
+    // Spread data transformation
     const data = useMemo(() => (resp?.points ?? []).map(p => {
         const date = new Date(p.date + 'T12:00:00');
         const spread = p.spread;
@@ -142,12 +140,19 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
         };
     }), [resp]);
 
-    // Map GDP to quarterly line points; prefer SAAR if present, else plain q/q %
+    // GDP line uses ann % (SAAR) for qoq, plain yoy % for yoy
     const gdpLine = useMemo(() => (gdp?.points ?? []).map(p => {
         const date = new Date(p.date + 'T12:00:00');
-        const v = p.annualizedChangePct ?? p.changePct ?? null; // % already (not fraction)
+        let v: number | null = null;
+        if (gdpMode === 'qoq') {
+            v = p.annualizedChangePct ?? p.changePct ?? null; // SAAR first fallback to plain q/q
+        } else {
+            v = p.changePct ?? null; // yoy percent
+        }
         return { date, gdp: v };
-    }), [gdp]);
+    }), [gdp, gdpMode]);
+
+    const gdpSeriesTitle = gdpMode === 'qoq' ? 'GDP (q/q SAAR %)' : 'GDP (y/y %)' ;
 
     const options = useMemo<AgCartesianChartOptions>(() => {
         const axes: NonNullable<AgCartesianChartOptions['axes']> = [
@@ -169,15 +174,14 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
                     {
                         type: 'line',
                         value: 0,
-                        stroke: '#ffffffb3',    // brighter than other grid lines
+                        stroke: '#ffffffb3',
                         strokeWidth: 2,
-                        lineDash: [6, 4],       // make it distinct; remove if you want solid
+                        lineDash: [6, 4],
                     }
                 ],
             },
         ];
 
-        // Mobile tweaks: simpler x-axis labels (shorter format) & fewer features
         if (isMobile) {
             axes[0] = {
                 ...axes[0],
@@ -185,7 +189,6 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
             } as any;
         }
 
-        // Need a right axis if either user wants spread on right OR we have GDP
         const needRightAxis = useSecondaryAxisForSpread || gdpLine.length > 0;
         if (needRightAxis) {
             axes.push({
@@ -219,14 +222,13 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
             },
         ];
 
-        // GDP line on right axis (quarterly)
         if (gdpLine.length) {
             series.push({
                 type: 'line',
                 data: gdpLine,
                 xKey: 'date',
                 yKey: 'gdp',
-                yName: 'GDP (q/q SAAR %)', // tweak if you prefer plain q/q %
+                yName: gdpSeriesTitle,
                 yAxisKey: 'right',
                 marker: { enabled: true, size: isMobile ? 2.5 : 3 },
                 stroke: '#f59e0b',
@@ -252,20 +254,15 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
             axes,
             legend: { enabled: true, position: isMobile ? 'top' : 'bottom', item: { marker: { size: isMobile ? 8 : 12 } } },
             padding: isMobile ? { top: 4, right: 4, bottom: 2, left: 4 } : { top: 6, right: 8, bottom: 4, left: 8 },
-
-            // AG Charts zoom API (Enterprise)
             zoom: {
                 enabled: true,
-                axes: 'x',             // zoom on X only
-                enableSelecting: !isMobile, // disable drag-box selection on mobile (hard to use)
-                enableScrolling: true, // wheel/trackpad OR pinch zoom
-                enablePanning: true,   // drag to pan when zoomed
-                enableAxisDragging: !isMobile, // axis handles are fiddly on touch
+                axes: 'x',
+                enableSelecting: !isMobile,
+                enableScrolling: true,
+                enablePanning: true,
+                enableAxisDragging: !isMobile,
             } as any,
-
             navigator: { enabled: false } as any,
-
-            // Fallback reset path uses `initialState`
             ...(resetNonce > 0
                 ? {
                     initialState: {
@@ -276,13 +273,13 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
                     },
                 }
                 : {}),
-
             series,
         };
     }, [
         data, resp, seriesA, seriesB,
         useSecondaryAxisForSpread,
         gdpLine,
+        gdpSeriesTitle,
         resetNonce,
         isMobile,
     ]);

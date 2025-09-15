@@ -40,10 +40,11 @@ export async function fetchInversion(
 
 export async function fetchGdpGrowth(
   start: string,
-  end: string
+  end: string,
+  mode: 'qoq' | 'yoy' = 'qoq'
 ): Promise<GdpGrowthResponseDto> {
   const base = resolveApiBase();
-  const url = appendCode(`${base}/api/gdp-growth?start=${start}&end=${end}`);
+  const url = appendCode(`${base}/api/gdp-growth?start=${start}&end=${end}&mode=${mode}`);
   const res = await fetch(url);
   if (!res.ok) {
     const text = await res.text();
