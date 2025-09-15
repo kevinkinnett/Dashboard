@@ -57,7 +57,22 @@ export default function App() {
     const [seriesA, setA] = useState(init.seriesA);
     const [seriesB, setB] = useState(init.seriesB);
     const [secondaryAxis, setSecondaryAxis] = useState(init.secondaryAxis);
-    const [gdpMode, setGdpMode] = useState<'qoq' | 'yoy'>(init.gdpMode);
+    const [gdpMode, setGdpMode] = useState<'qoq' | 'yoy'>(init.gdpMode as 'qoq' | 'yoy');
+
+    // Mobile detection for layout adjustments
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const mqWidth = window.matchMedia('(max-width: 820px)');
+        const mqCoarse = window.matchMedia('(pointer: coarse)');
+        const update = () => setIsMobile(mqWidth.matches || mqCoarse.matches);
+        update();
+        mqWidth.addEventListener('change', update);
+        mqCoarse.addEventListener('change', update);
+        return () => {
+            mqWidth.removeEventListener('change', update);
+            mqCoarse.removeEventListener('change', update);
+        };
+    }, []);
 
     // Chart reload token (increments after cache purge)
     const [reloadToken, setReloadToken] = useState(0);
@@ -399,6 +414,8 @@ export default function App() {
                             padding: '.6rem',
                             display: 'flex',
                             flexDirection: 'column',
+                            height: '100%',
+                            overflowY: isMobile ? 'auto' : 'visible',
                         }}
                     >
                         <div
@@ -408,13 +425,15 @@ export default function App() {
                                 letterSpacing: '1px',
                                 opacity: 0.7,
                                 marginBottom: '.4rem',
+                                flex: '0 0 auto'
                             }}
                         >
                             Yield Inversion
                         </div>
                         <div
                             style={{
-                                flex: 1,
+                                flex: isMobile ? '0 0 90%' : '1 1 auto',
+                                height: isMobile ? '90%' : undefined,
                                 minHeight: 0,
                                 minWidth: 0,
                                 display: 'flex',
@@ -431,7 +450,9 @@ export default function App() {
                                 gdpMode={gdpMode}
                             />
                         </div>
-                        <MetricDescriptions />
+                        <div style={{ flex: '0 0 auto', marginTop: isMobile ? '.4rem' : 0 }}>
+                            <MetricDescriptions />
+                        </div>
                     </div>
                 </div>
             </div>
