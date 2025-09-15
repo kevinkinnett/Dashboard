@@ -31,3 +31,13 @@ export type GdpGrowthResponseDto = {
     mode: 'qoq' | 'yoy';           // calculation mode returned by API
     points: GdpGrowthPointDto[];
 };
+
+// Jobs (labor market) multi-series endpoint
+export type JobsSeriesMeta = { id: string; property: string }; // property is key in each point
+export type JobsPointDto = { date: string } & Record<string, number | null>; // dynamic series columns
+export type JobsDataResponseDto = {
+  start: string;
+  end: string;
+  series: JobsSeriesMeta[];
+  points: JobsPointDto[];
+};

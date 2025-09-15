@@ -1,4 +1,4 @@
-import type { YieldResponseDto, GdpGrowthResponseDto } from './types';
+import type { YieldResponseDto, GdpGrowthResponseDto, JobsDataResponseDto } from './types';
 
 interface EnvShape { VITE_API_BASE?: string; VITE_API_KEY?: string; }
 function getEnv(): EnvShape {
@@ -51,6 +51,23 @@ export async function fetchGdpGrowth(
     throw new Error(`HTTP ${res.status}: ${text}`);
   }
   return (await res.json()) as GdpGrowthResponseDto;
+}
+
+export async function fetchJobsData(
+  start: string,
+  end: string,
+  seriesCsv?: string
+): Promise<JobsDataResponseDto> {
+  const base = resolveApiBase();
+  const params = new URLSearchParams({ start, end });
+  if (seriesCsv && seriesCsv.trim()) params.set('series', seriesCsv.trim());
+  const url = appendCode(`${base}/api/jobs-data?${params.toString()}`);
+  const res = await fetch(url);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`HTTP ${res.status}: ${text}`);
+  }
+  return await res.json() as JobsDataResponseDto;
 }
 
 // DELETE selected cache blobs (coverage + specified observation blobs)

@@ -4,6 +4,7 @@ import YieldInversionReport from './reports/YieldInversion/YieldInversionReport'
 import JobsReport from './reports/Jobs/JobsReport';
 
 const NAV_KEY = 'yieldInversionSettings:navCollapsed:v1';
+const ACTIVE_REPORT_KEY = 'dashboard:lastReport:v1';
 
 // Simple enum of report identifiers
 const reports = [
@@ -17,7 +18,14 @@ export default function App() {
     });
     useEffect(() => { try { localStorage.setItem(NAV_KEY, navCollapsed ? '1' : '0'); } catch { } }, [navCollapsed]);
 
-    const [activeReport, setActiveReport] = useState<string>('yield');
+    const [activeReport, setActiveReport] = useState<string>(() => {
+        try {
+            const saved = localStorage.getItem(ACTIVE_REPORT_KEY);
+            if (saved && reports.some(r => r.id === saved)) return saved;
+        } catch { }
+        return 'yield';
+    });
+    useEffect(() => { try { localStorage.setItem(ACTIVE_REPORT_KEY, activeReport); } catch { } }, [activeReport]);
 
     const asideWidth = navCollapsed ? 54 : 230;
 
