@@ -10,19 +10,20 @@ const SERIES_COLORS: Record<string, string> = {
   UNRATE: '#38bdf8', // light blue
   PAYEMS: '#f59e0b', // amber
   U6RATE: '#a78bfa', // purple
+  JTSJOL: '#34d399', // teal (job openings)
 };
 
-interface PersistedSettings { start: string; end: string; changeMode: ChangeMode; unrate: boolean; payems: boolean; u6: boolean; }
+interface PersistedSettings { start: string; end: string; changeMode: ChangeMode; unrate: boolean; payems: boolean; u6: boolean; jtsjol: boolean; }
 
 type ChangeMode = 'level' | 'pctYoY' | 'pctMoM';
 
-const SETTINGS_KEY = 'jobsReportSettings:v5';
+const SETTINGS_KEY = 'jobsReportSettings:v6';
 function loadInitial(): PersistedSettings {
-  const fallback: PersistedSettings = { start: '2019-01-01', end: new Date().toISOString().slice(0,10), changeMode: 'pctYoY', unrate: true, payems: true, u6: false };
+  const fallback: PersistedSettings = { start: '2019-01-01', end: new Date().toISOString().slice(0,10), changeMode: 'pctYoY', unrate: true, payems: true, u6: false, jtsjol: false };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY); if (!raw) return fallback;
     const p = JSON.parse(raw); if (!p || typeof p !== 'object') return fallback;
-    const { start, end, changeMode, unrate, payems, u6 } = p as any;
+    const { start, end, changeMode, unrate, payems, u6, jtsjol } = p as any;
     const iso = /^\d{4}-\d{2}-\d{2}$/;
     return {
       start: iso.test(start) ? start : fallback.start,
@@ -31,6 +32,7 @@ function loadInitial(): PersistedSettings {
       unrate: typeof unrate === 'boolean' ? unrate : true,
       payems: typeof payems === 'boolean' ? payems : true,
       u6: typeof u6 === 'boolean' ? u6 : false,
+      jtsjol: typeof jtsjol === 'boolean' ? jtsjol : false,
     };
   } catch { return fallback; }
 }
@@ -43,9 +45,10 @@ export default function JobsReport() {
   const [showUnrate, setShowUnrate] = useState<boolean>(init.unrate);
   const [showPayems, setShowPayems] = useState<boolean>(init.payems);
   const [showU6, setShowU6] = useState<boolean>(init.u6);
+  const [showJtsjol, setShowJtsjol] = useState<boolean>(init.jtsjol);
   const [startInput, setStartInput] = useState(init.start);
   const [endInput, setEndInput] = useState(init.end);
-  const [seriesCsv, setSeriesCsv] = useState<string>('UNRATE,PAYEMS'); // derived
+  const [seriesCsv, setSeriesCsv] = useState<string>('');
   const [resp, setResp] = useState<JobsDataResponseDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -57,12 +60,10 @@ export default function JobsReport() {
     if (showUnrate) list.push('UNRATE');
     if (showPayems) list.push('PAYEMS');
     if (showU6) list.push('U6RATE');
-    if (!list.length) { // enforce at least one (re-add UNRATE)
-      list.push('UNRATE');
-      setShowUnrate(true);
-    }
+    if (showJtsjol) list.push('JTSJOL');
+    if (!list.length) { list.push('UNRATE'); setShowUnrate(true); }
     setSeriesCsv(list.join(','));
-  }, [showUnrate, showPayems, showU6]);
+  }, [showUnrate, showPayems, showU6, showJtsjol]);
 
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -74,7 +75,7 @@ export default function JobsReport() {
   }, []);
 
   // Persist settings
-  useEffect(() => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ start, end, changeMode, unrate: showUnrate, payems: showPayems, u6: showU6 })); } catch { } }, [start, end, changeMode, showUnrate, showPayems, showU6]);
+  useEffect(() => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ start, end, changeMode, unrate: showUnrate, payems: showPayems, u6: showU6, jtsjol: showJtsjol })); } catch { } }, [start, end, changeMode, showUnrate, showPayems, showU6, showJtsjol]);
 
   const isValidDate = useCallback((v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(new Date(v+'T00:00:00').getTime()), []);
   const maybeCommitStart = useCallback((v: string) => { if (v.length===10 && isValidDate(v)) setStart(v); }, [isValidDate]);
@@ -218,27 +219,30 @@ export default function JobsReport() {
           <label style={{ fontSize:'.6rem', display:'flex', alignItems:'center', gap:'.4rem', cursor:'pointer' }}>
             <input type='checkbox' checked={showU6} onChange={e=> setShowU6(e.target.checked)} /> U6RATE
           </label>
+          <label style={{ fontSize:'.6rem', display:'flex', alignItems:'center', gap:'.4rem', cursor:'pointer' }}>
+            <input type='checkbox' checked={showJtsjol} onChange={e=> setShowJtsjol(e.target.checked)} /> JTSJOL
+          </label>
         </fieldset>
         <div style={{ display:'flex', flexDirection:'column' }}>
-          <label style={{ fontSize:'.6rem', textTransform:'uppercase', letterSpacing:'1px', opacity:.7 }}>Level Series Mode</label>
-          <select value={changeMode} onChange={e => setChangeMode(e.target.value as ChangeMode)} style={{ fontSize: '.65rem' }}>
-            <option value='level'>Raw Level</option>
-            <option value='pctMoM'>% MoM</option>
-            <option value='pctYoY'>% YoY</option>
-          </select>
+            <label style={{ fontSize:'.6rem', textTransform:'uppercase', letterSpacing:'1px', opacity:.7 }}>Level Series Mode</label>
+            <select value={changeMode} onChange={e => setChangeMode(e.target.value as ChangeMode)} style={{ fontSize: '.65rem' }}>
+              <option value='level'>Raw Level</option>
+              <option value='pctMoM'>% MoM</option>
+              <option value='pctYoY'>% YoY</option>
+            </select>
         </div>
         <button onClick={commitReload} style={{ fontSize:'.6rem', padding:'.45rem .8rem', marginLeft:'auto' }}>Reload</button>
       </div>
-      <div style={{ flex:1, minHeight:0, padding:'.75rem', display:'flex', flexDirection:'column', overflow:'hidden' }}>
-        <div style={{ flex:1, minHeight:0, minWidth:0, background:'linear-gradient(145deg,#1d2731,#10161c)', border:'1px solid #243241', borderRadius:12, padding:'.6rem', display:'flex', flexDirection:'column' }}>
-          <div style={{ fontSize:'.65rem', textTransform:'uppercase', letterSpacing:'1px', opacity:.7, marginBottom:'.4rem' }}>Labor Market Series</div>
-          <div style={{ flex: '1 1 auto', minHeight:0, minWidth:0, display:'flex' }}>
+      <div style={{ flex:1, minHeight:0, padding:'.75rem', display:'flex', overflow:'hidden' }}>
+        <div style={{ flex:1, minHeight:0, minWidth:0, background:'linear-gradient(145deg,#1d2731,#10161c)', border:'1px solid #243241', borderRadius:12, padding:'.6rem', display:'flex', flexDirection:'column', height:'100%', overflowY: isMobile ? 'auto' : 'visible' }}>
+          <div style={{ fontSize:'.65rem', textTransform:'uppercase', letterSpacing:'1px', opacity:.7, marginBottom:'.4rem', flex:'0 0 auto' }}>Labor Market Series</div>
+          <div style={{ flex: isMobile ? '0 0 90%' : '1 1 auto', height: isMobile ? '90%' : undefined, minHeight:0, minWidth:0, display:'flex' }}>
             {error && <div style={{ color:'#f87171', fontSize:'.7rem' }}>{error}</div>}
             {loading && !resp && <div style={{ color:'var(--color-text-dim)', fontSize:'.7rem' }}>Loading…</div>}
             {resp && <AgCharts ref={chartRef as any} options={options as any} style={{ flex:1, minWidth:0 }} />}
           </div>
-          {resp && <div style={{ fontSize:'.55rem', opacity:.6, marginTop:'.4rem' }}>Series: {resp.series.map(s=>s.id).join(', ')} | Rows: {resp.points.length} | Mode: {changeMode}</div>}
-          <div style={{ marginTop:'.75rem' }}>
+          <div style={{ flex:'0 0 auto', marginTop:isMobile?'.4rem':'.6rem' }}>
+            {resp && <div style={{ fontSize:'.55rem', opacity:.6, marginBottom:'.45rem' }}>Series: {resp.series.map(s=>s.id).join(', ')} | Rows: {resp.points.length} | Mode: {changeMode}</div>}
             <JobsMetricDescriptions seriesIds={seriesCsv.split(',').map(s=>s.trim()).filter(Boolean)} changeMode={changeMode} />
           </div>
         </div>
