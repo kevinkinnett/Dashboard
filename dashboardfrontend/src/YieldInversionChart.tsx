@@ -7,7 +7,7 @@ import React, {
     useRef,
     useState,
 } from 'react';
-import AgChartsReact from 'ag-charts-react';
+import { AgChartsReact } from 'ag-charts-react';
 import type { AgChartsReactRef } from 'ag-charts-react';
 import type { AgCartesianChartOptions } from 'ag-charts-community';
 import { fetchInversion, fetchGdpGrowth } from './api';
