@@ -1,4 +1,4 @@
-import type { YieldResponseDto, GdpGrowthResponseDto, JobsDataResponseDto } from './types';
+import type { YieldResponseDto, GdpGrowthResponseDto, JobsDataResponseDto, BuffettIndicatorResponseDto } from './types';
 
 interface EnvShape { VITE_API_BASE?: string; VITE_API_KEY?: string; }
 function getEnv(): EnvShape {
@@ -68,6 +68,33 @@ export async function fetchJobsData(
     throw new Error(`HTTP ${res.status}: ${text}`);
   }
   return await res.json() as JobsDataResponseDto;
+}
+
+interface BuffettIndicatorOptions {
+  marketCapSeries?: string;
+  outputSeries?: string;
+  equitySeries?: string;
+  priceSeries?: string;
+}
+
+export async function fetchBuffettIndicator(
+  start: string,
+  end: string,
+  options?: BuffettIndicatorOptions
+): Promise<BuffettIndicatorResponseDto> {
+  const base = resolveApiBase();
+  const params = new URLSearchParams({ start, end });
+  if (options?.marketCapSeries) params.set('marketCapSeries', options.marketCapSeries);
+  if (options?.outputSeries) params.set('outputSeries', options.outputSeries);
+  if (options?.equitySeries) params.set('equitySeries', options.equitySeries);
+  if (options?.priceSeries) params.set('priceSeries', options.priceSeries);
+  const url = appendCode(`${base}/api/buffett-indicator?${params.toString()}`);
+  const res = await fetch(url);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`HTTP ${res.status}: ${text}`);
+  }
+  return await res.json() as BuffettIndicatorResponseDto;
 }
 
 // DELETE selected cache blobs (coverage + specified observation blobs)

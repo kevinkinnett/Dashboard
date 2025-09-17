@@ -7,8 +7,9 @@ import React, {
     useRef,
     useState,
 } from 'react';
-import { AgCharts } from 'ag-charts-react';
-import type { AgCartesianChartOptions, AgChartInstance } from 'ag-charts-community';
+import { AgChartsReact } from 'ag-charts-react';
+import type { AgChartsReactRef } from 'ag-charts-react';
+import type { AgCartesianChartOptions } from 'ag-charts-community';
 import { fetchInversion, fetchGdpGrowth } from './api';
 import type { YieldResponseDto, GdpGrowthResponseDto } from './types';
 
@@ -63,7 +64,7 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
         };
     }, []);
 
-    const agRef = useRef<{ chart?: AgChartInstance } | null>(null);
+    const agRef = useRef<AgChartsReactRef | null>(null);
     const initialStateRef = useRef<any | null>(null);
     const [resetNonce, setResetNonce] = useState(0);
 
@@ -90,7 +91,7 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
 
     // Capture initial chart state
     useEffect(() => {
-        const inst = agRef.current?.chart as any;
+        const inst = agRef.current?.chart;
         if (inst && typeof inst.getState === 'function') {
             try { initialStateRef.current = inst.getState(); } catch { }
         }
@@ -98,7 +99,7 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
 
     useImperativeHandle(ref, () => ({
         resetZoom() {
-            const inst = agRef.current?.chart as any;
+            const inst = agRef.current?.chart;
             // Prefer API reset via setState if available (v9/10+)
             if (inst && typeof inst.setState === 'function') {
                 const zoomState = initialStateRef.current?.zoom;
@@ -112,13 +113,13 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
         },
         // Optional helpers if you later want to persist state:
         saveState() {
-            const inst = agRef.current?.chart as any;
+            const inst = agRef.current?.chart;
             if (inst && typeof inst.getState === 'function') {
                 initialStateRef.current = inst.getState();
             }
         },
         restoreState() {
-            const inst = agRef.current?.chart as any;
+            const inst = agRef.current?.chart;
             const st = initialStateRef.current;
             if (inst && typeof inst.setState === 'function' && st) {
                 inst.setState(st);
@@ -289,7 +290,7 @@ const YieldInversionChart = forwardRef<YieldInversionChartHandle, Props>(functio
 
     return (
         <div style={{ flex: 1, minWidth: 0, width: '100%', height: '100%', minHeight: 0, display: 'flex' }}>
-            <AgCharts ref={agRef as any} options={options as any} style={{ flex: 1, minWidth: 0 }} />
+            <AgChartsReact ref={agRef} options={options as any} style={{ flex: 1, minWidth: 0 }} />
         </div>
     );
 });
