@@ -1,3 +1,4 @@
+using DashboardFunctions.Infrastructure;
 using DashboardFunctions.Repositories;
 using DashboardFunctions.Services;
 using Microsoft.AspNetCore.WebUtilities;
