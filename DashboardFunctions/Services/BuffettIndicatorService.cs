@@ -75,6 +75,45 @@ namespace DashboardFunctions.Services
             var orderedDates = dateSet.ToList();
             orderedDates.Sort();
 
+            DateTime? lastCoreDate = null;
+
+            void ConsiderCoreDates(List<SeriesPoint> points)
+            {
+                foreach (var point in points)
+                {
+                    if (point.Date < startDate || point.Date > endDate)
+                    {
+                        continue;
+                    }
+
+                    if (!point.Value.HasValue)
+                    {
+                        continue;
+                    }
+
+                    if (!lastCoreDate.HasValue || point.Date > lastCoreDate.Value)
+                    {
+                        lastCoreDate = point.Date;
+                    }
+                }
+            }
+
+            ConsiderCoreDates(marketPoints);
+            ConsiderCoreDates(equityPoints);
+            ConsiderCoreDates(gdpPoints);
+
+            if (!lastCoreDate.HasValue)
+            {
+                return new BuffettIndicatorResult(Array.Empty<BuffettIndicatorPoint>(), null, null);
+            }
+
+            orderedDates.RemoveAll(date => date > lastCoreDate.Value);
+
+            if (orderedDates.Count == 0)
+            {
+                return new BuffettIndicatorResult(Array.Empty<BuffettIndicatorPoint>(), null, null);
+            }
+
             var basePriceEntry = pricePoints
                 .LastOrDefault(p => p.Date <= startDate && p.Value.HasValue)
                 ?? pricePoints.FirstOrDefault(p => p.Value.HasValue);
