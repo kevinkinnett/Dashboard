@@ -225,12 +225,12 @@ export default function JobsReport() {
           </label>
         </fieldset>
         <div style={{ display:'flex', flexDirection:'column' }}>
-            <label style={{ fontSize:'.6rem', textTransform:'uppercase', letterSpacing:'1px', opacity:.7 }}>Level Series Mode</label>
-            <select value={changeMode} onChange={e => setChangeMode(e.target.value as ChangeMode)} style={{ fontSize: '.65rem' }}>
-              <option value='level'>Raw Level</option>
-              <option value='pctMoM'>% MoM</option>
-              <option value='pctYoY'>% YoY</option>
-            </select>
+          <label style={{ fontSize:'.6rem', textTransform:'uppercase', letterSpacing:'1px', opacity:.7 }}>Level Series Mode</label>
+          <select value={changeMode} onChange={e => setChangeMode(e.target.value as ChangeMode)} style={{ fontSize: '.65rem' }}>
+            <option value='level'>Raw Level</option>
+            <option value='pctMoM'>% MoM</option>
+            <option value='pctYoY'>% YoY</option>
+          </select>
         </div>
         <button onClick={commitReload} style={{ fontSize:'.6rem', padding:'.45rem .8rem', marginLeft:'auto' }}>Reload</button>
       </div>
@@ -239,9 +239,9 @@ export default function JobsReport() {
           <div style={{ fontSize:'.65rem', textTransform:'uppercase', letterSpacing:'1px', opacity:.7, marginBottom:'.4rem', flex:'0 0 auto' }}>Labor Market Series</div>
           <div style={{ flex: isMobile ? '0 0 90%' : '1 1 auto', height: isMobile ? '90%' : undefined, minHeight:0, minWidth:0, display:'flex' }}>
             {error && <div style={{ color:'#f87171', fontSize:'.7rem' }}>{error}</div>}
-            {resp && <AgChartsReact ref={chartRef} options={options as any} style={{ flex:1, minWidth:0 }} />}
-</div>}
-            {resp && <AgCharts ref={chartRef as any} options={options as any} style={{ flex:1, minWidth:0 }} />}
+            {resp && (
+              <AgChartsReact ref={chartRef} options={options as any} style={{ flex:1, minWidth:0 }} />
+            )}
           </div>
           <div style={{ flex:'0 0 auto', marginTop:isMobile?'.4rem':'.6rem' }}>
             {resp && <div style={{ fontSize:'.55rem', opacity:.6, marginBottom:'.45rem' }}>Series: {resp.series.map(s=>s.id).join(', ')} | Rows: {resp.points.length} | Mode: {changeMode}</div>}
