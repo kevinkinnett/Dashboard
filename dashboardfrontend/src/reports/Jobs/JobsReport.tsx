@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchJobsData } from '../../api';
 import type { JobsDataResponseDto } from '../../types';
-import { AgChartsReact } from 'ag-charts-react';
+import AgChartsReact from 'ag-charts-react';
 import type { AgChartsReactRef } from 'ag-charts-react';
 import type { AgCartesianChartOptions } from 'ag-charts-community';
 import JobsMetricDescriptions from './JobsMetricDescriptions';

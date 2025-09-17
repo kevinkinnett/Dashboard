@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AgChartsReact } from 'ag-charts-react';
+import AgChartsReact from 'ag-charts-react';
 import type { AgCartesianChartOptions } from 'ag-charts-community';
 import { fetchBuffettIndicator } from '../../api';
 import type { BuffettIndicatorResponseDto } from '../../types';
