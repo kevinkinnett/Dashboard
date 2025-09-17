@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DashboardFunctions", "Dashb
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dashboard.Functions.Tests", "Dashboard.Functions.Tests\Dashboard.Functions.Tests.csproj", "{B94B11E7-C0DD-4D5A-8C9D-B7D92F64B4B7}"
 EndProject
-Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "dashboardfrontend", "DashboardFrontEnd\dashboardfrontend.esproj", "{D0A535E4-F664-3B0B-9020-97040840F3C8}"
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "dashboardfrontend", "dashboardfrontend\dashboardfrontend.esproj", "{D0A535E4-F664-3B0B-9020-97040840F3C8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

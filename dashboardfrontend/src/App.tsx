@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import YieldInversionReport from './reports/YieldInversion/YieldInversionReport';
 import JobsReport from './reports/Jobs/JobsReport';
+import BuffettIndicatorReport from './reports/BuffettIndicator/BuffettIndicatorReport';
 
 const NAV_KEY = 'yieldInversionSettings:navCollapsed:v1';
 const ACTIVE_REPORT_KEY = 'dashboard:lastReport:v1';
@@ -9,6 +10,7 @@ const ACTIVE_REPORT_KEY = 'dashboard:lastReport:v1';
 // Simple enum of report identifiers
 const reports = [
     { id: 'yield', label: 'Yield Inversion', component: <YieldInversionReport /> },
+    { id: 'buffett', label: 'Buffett Indicator', component: <BuffettIndicatorReport /> },
     { id: 'jobs', label: 'Jobs', component: <JobsReport /> },
 ];
 

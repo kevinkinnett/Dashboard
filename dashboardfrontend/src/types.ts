@@ -41,3 +41,26 @@ export type JobsDataResponseDto = {
   series: JobsSeriesMeta[];
   points: JobsPointDto[];
 };
+
+export type BuffettIndicatorPointDto = {
+  date: string;
+  marketCap: number | null;
+  economicOutput: number | null;
+  indicatorPercent: number | null;
+  equityIndex: number | null;
+  equityIndexReal: number | null;
+  economicOutputAsOf?: string | null;
+  priceIndexAsOf?: string | null;
+};
+
+export type BuffettIndicatorResponseDto = {
+  start: string;
+  end: string;
+  marketCapSeries: string;
+  outputSeries: string;
+  equitySeries: string;
+  priceSeries: string;
+  basePriceIndex: number | null;
+  basePriceIndexDate?: string | null;
+  points: BuffettIndicatorPointDto[];
+};

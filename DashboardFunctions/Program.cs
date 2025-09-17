@@ -47,6 +47,7 @@ var host = Host.CreateDefaultBuilder()
         services.AddScoped<IRangeService, RangeService>();
         services.AddScoped<IInversionService, InversionService>();
         services.AddScoped<ITimeSeriesFetchOrchestrator, TimeSeriesFetchOrchestrator>();
+        services.AddScoped<IBuffettIndicatorService, BuffettIndicatorService>();
     })
     .Build();
 

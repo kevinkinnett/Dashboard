@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchJobsData } from '../../api';
 import type { JobsDataResponseDto } from '../../types';
-import { AgCharts } from 'ag-charts-react';
-import type { AgCartesianChartOptions, AgChartInstance } from 'ag-charts-community';
+import { AgChartsReact } from 'ag-charts-react';
+import type { AgChartsReactRef } from 'ag-charts-react';
+import type { AgCartesianChartOptions } from 'ag-charts-community';
 import JobsMetricDescriptions from './JobsMetricDescriptions';
 
 // Stable series color mapping so toggling visibility preserves color identity
@@ -178,7 +179,7 @@ export default function JobsReport() {
     }
   }, [changeMode]);
 
-  const chartRef = useRef<{ chart?: AgChartInstance } | null>(null);
+  const chartRef = useRef<AgChartsReactRef | null>(null);
 
   const options = useMemo<AgCartesianChartOptions>(() => ({
     theme: 'ag-default-dark',
@@ -238,7 +239,8 @@ export default function JobsReport() {
           <div style={{ fontSize:'.65rem', textTransform:'uppercase', letterSpacing:'1px', opacity:.7, marginBottom:'.4rem', flex:'0 0 auto' }}>Labor Market Series</div>
           <div style={{ flex: isMobile ? '0 0 90%' : '1 1 auto', height: isMobile ? '90%' : undefined, minHeight:0, minWidth:0, display:'flex' }}>
             {error && <div style={{ color:'#f87171', fontSize:'.7rem' }}>{error}</div>}
-            {loading && !resp && <div style={{ color:'var(--color-text-dim)', fontSize:'.7rem' }}>Loading…</div>}
+            {resp && <AgChartsReact ref={chartRef} options={options as any} style={{ flex:1, minWidth:0 }} />}
+</div>}
             {resp && <AgCharts ref={chartRef as any} options={options as any} style={{ flex:1, minWidth:0 }} />}
           </div>
           <div style={{ flex:'0 0 auto', marginTop:isMobile?'.4rem':'.6rem' }}>
